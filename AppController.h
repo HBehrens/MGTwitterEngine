@@ -8,13 +8,17 @@
 
 #import <Cocoa/Cocoa.h>
 #import "MGTwitterEngine.h"
+#import "OAConsumer.h"
+#import "OAMutableURLRequest.h"
+#import "OADataFetcher.h"
 
 @class OAToken;
 
 @interface AppController : NSObject <MGTwitterEngineDelegate> {
     MGTwitterEngine *twitterEngine;
-	
-	OAToken *token;
+	OADataFetcher *_fetcher;
+	OAMutableURLRequest *_request;
+	OAToken *_requestToken;
 }
 
 // this gets called when the OAuth token is received

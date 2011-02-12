@@ -10,38 +10,103 @@
 
 @implementation AppController
 
+NSString *consumerKey = ;
+NSString *consumerSecret = ;
 
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
-{
-    // Put your Twitter username and password here:
-    NSString *username = nil;
-    NSString *password = nil;
-	
-	NSString *consumerKey = nil;
-	NSString *consumerSecret = nil;
-	
-    // Most API calls require a name and password to be set...
-    if (! username || ! password || !consumerKey || !consumerSecret) {
-        NSLog(@"You forgot to specify your username/password/key/secret in AppController.m, things might not work!");
-		NSLog(@"And if things are mysteriously working without the username/password, it's because NSURLConnection is using a session cookie from another connection.");
-    }
-    
-    // Create a TwitterEngine and set our login details.
+-(void)runTestsWithToken:(OAToken*)aToken {
+    // Create a TwitterEngine and set credentials
     twitterEngine = [[MGTwitterEngine alloc] initWithDelegate:self];
 	[twitterEngine setUsesSecureConnection:NO];
 	[twitterEngine setConsumerKey:consumerKey secret:consumerSecret];
+	[twitterEngine setAccessToken:aToken];
 	 
-	[twitterEngine getXAuthAccessTokenForUsername:username password:password];
+	[self runTests];
 }
 
--(void)runTests{
-	[twitterEngine setAccessToken:token];
+
+-(void)requestOAuthToken {
+	OAConsumer *consumer = [[[OAConsumer alloc] initWithKey:consumerKey secret:consumerSecret] autorelease];
 	
+    NSURL *url;
+	SEL ticketFinish;
+	SEL ticketFail;
+	
+	if(_requestToken) {
+		url = [NSURL URLWithString:@"https://api.twitter.com/oauth/access_token"];
+		ticketFinish = @selector(accessTokenTicket:didFinishWithData:);
+		ticketFail = @selector(accessTokenTicket:didFailWithError:);
+	} else {
+		url = [NSURL URLWithString:@"https://api.twitter.com/oauth/request_token"];
+		ticketFinish = @selector(requestTokenTicket:didFinishWithData:);
+		ticketFail = @selector(requestTokenTicket:didFailWithError:);
+	}
+
+    [_request release];
+	_request = [[OAMutableURLRequest alloc] initWithURL:url
+											   consumer:consumer
+												  token:_requestToken   // we don't have a Token yet
+												  realm:nil   // our service provider doesn't specify a realm
+									  signatureProvider:nil]; // use the default method, HMAC-SHA1
+	
+	[_request setHTTPMethod:@"POST"];
+	_request.callback = @"myscheme:/OAuth";
+
+    [_fetcher release];
+	_fetcher = [[OADataFetcher alloc] init];
+	[_fetcher fetchDataWithRequest:_request
+							 delegate:self
+					didFinishSelector:ticketFinish
+					  didFailSelector:ticketFail];
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
+{
+	[[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(handleURLEvent:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
+	
+	[self requestOAuthToken];
+}
+
+- (void)handleURLEvent:(NSAppleEventDescriptor*)event withReplyEvent:(NSAppleEventDescriptor*)replyEvent
+{
+	// TODO: clean up
+    NSString* s = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
+	NSURL *url = [NSURL URLWithString:s];
+	
+	NSMutableDictionary *params = [[[NSMutableDictionary alloc] init] autorelease];
+	for (NSString* param in [[url query] componentsSeparatedByString:@"&"]) {
+		NSArray* elts = [param componentsSeparatedByString:@"="];
+		[params setObject:[elts objectAtIndex:1] forKey:[elts objectAtIndex:0]];
+	}
+	NSString *verifier = [params objectForKey:@"oauth_verifier"];
+    _requestToken.verifier = verifier;
+	[self requestOAuthToken];
+    }
+    
+- (void)requestTokenTicket:(OAServiceTicket *)ticket didFinishWithData:(NSData *)data {
+	NSString *responseBody = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
+	if (ticket.didSucceed) {
+		_requestToken = [[OAToken alloc] initWithHTTPResponseBody:responseBody];
+	 
+		NSString *s = [NSString stringWithFormat: @"https://api.twitter.com/oauth/authorize?oauth_token=%@", _requestToken.key];
+		NSURL *url = [NSURL URLWithString:s];
+		[[NSWorkspace sharedWorkspace] openURL:url];
+	}
+}
+
+- (void)accessTokenTicket:(OAServiceTicket *)ticket didFinishWithData:(NSData *)data {
+	NSString *responseBody = [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] autorelease];
+	if (ticket.didSucceed) {
+		OAToken *t = [[[OAToken alloc] initWithHTTPResponseBody:responseBody] autorelease];
+		[self runTestsWithToken: t];
+	}
+}
+	
+-(void)runTests{
 	// Configure how the delegate methods are called to deliver results. See MGTwitterEngineDelegate.h for more info
 	//[twitterEngine setDeliveryOptions:MGTwitterEngineDeliveryIndividualResultsOption];
 
 	// Get the public timeline
-	NSLog(@"getPublicTimelineSinceID: connectionIdentifier = %@", [twitterEngine getPublicTimeline]);
+	//NSLog(@"getPublicTimelineSinceID: connectionIdentifier = %@", [twitterEngine getPublicTimeline]);
 
 	// Other types of information available from the API:
 	
@@ -51,11 +116,11 @@
 	#define TESTING_MESSAGE_ID 52182684
 	
 	// Status methods:
-	NSLog(@"getHomeTimelineFor: connectionIdentifier = %@", [twitterEngine getHomeTimelineSinceID:0 startingAtPage:0 count:20]);
-	NSLog(@"getUserTimelineFor: connectionIdentifier = %@", [twitterEngine getUserTimelineFor:TESTING_SECONDARY_USER sinceID:0 startingAtPage:0 count:3]);
-	NSLog(@"getUpdate: connectionIdentifier = %@", [twitterEngine getUpdate:TESTING_ID]);
-	//NSLog(@"sendUpdate: connectionIdentifier = %@", [twitterEngine sendUpdate:[@"This is a test on " stringByAppendingString:[[NSDate date] description]]]);
-	NSLog(@"getRepliesStartingAtPage: connectionIdentifier = %@", [twitterEngine getRepliesStartingAtPage:0]);
+//	NSLog(@"getHomeTimelineFor: connectionIdentifier = %@", [twitterEngine getHomeTimelineSinceID:0 startingAtPage:0 count:20]);
+//	NSLog(@"getUserTimelineFor: connectionIdentifier = %@", [twitterEngine getUserTimelineFor:TESTING_SECONDARY_USER sinceID:0 startingAtPage:0 count:3]);
+//	NSLog(@"getUpdate: connectionIdentifier = %@", [twitterEngine getUpdate:TESTING_ID]);
+	NSLog(@"sendUpdate: connectionIdentifier = %@", [twitterEngine sendUpdate:[@"This is a test on " stringByAppendingString:[[NSDate date] description]]]);
+//	NSLog(@"getRepliesStartingAtPage: connectionIdentifier = %@", [twitterEngine getRepliesStartingAtPage:0]);
 	//NSLog(@"deleteUpdate: connectionIdentifier = %@", [twitterEngine deleteUpdate:TESTING_ID]);
 
 	// User methods:
@@ -64,7 +129,7 @@
 	//NSLog(@"getUserInformationFor: connectionIdentifier = %@", [twitterEngine getUserInformationFor:TESTING_PRIMARY_USER]);
 														  
 	// Direct Message methods:
-	//NSLog(@"getDirectMessagesSinceID: connectionIdentifier = %@", [twitterEngine getDirectMessagesSinceID:0 startingAtPage:0]);
+	NSLog(@"getDirectMessagesSinceID: connectionIdentifier = %@", [twitterEngine getDirectMessagesSinceID:0 startingAtPage:0]);
 	//NSLog(@"getSentDirectMessagesSinceID: connectionIdentifier = %@", [twitterEngine getSentDirectMessagesSinceID:0 startingAtPage:0]);
 	//NSLog(@"sendDirectMessage: connectionIdentifier = %@", [twitterEngine sendDirectMessage:[@"This is a test on " stringByAppendingString:[[NSDate date] description]] to:TESTING_SECONDARY_USER]);
 	//NSLog(@"deleteDirectMessage: connectionIdentifier = %@", [twitterEngine deleteDirectMessage:TESTING_MESSAGE_ID]);
@@ -193,14 +258,6 @@
 	{
 		[NSApp terminate:self];
 	}
-}
-
-- (void)accessTokenReceived:(OAToken *)aToken forRequest:(NSString *)connectionIdentifier
-{
-	NSLog(@"Access token received! %@",aToken);
-
-	token = [aToken retain];
-	[self runTests];
 }
 
 #if YAJL_AVAILABLE || TOUCHJSON_AVAILABLE
