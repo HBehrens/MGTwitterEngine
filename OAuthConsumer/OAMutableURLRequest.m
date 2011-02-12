@@ -47,13 +47,13 @@ signatureProvider:(id<OASignatureProviding, NSObject>)aProvider {
            cachePolicy:NSURLRequestReloadIgnoringCacheData
        timeoutInterval:10.0];
     
-    consumer = aConsumer;
+    consumer = [aConsumer retain];
     
     // empty token for Unauthorized Request Token transaction
     if (aToken == nil) {
         token = [[OAToken alloc] init];
     } else {
-        token = aToken;
+        token = [aToken retain];
     }
     
     if (aRealm == nil) {
@@ -95,6 +95,20 @@ signatureProvider:(id<OASignatureProviding, NSObject>)aProvider
     
     return self;
 }
+
+- (void) dealloc
+{
+	[consumer release];
+	[token release];
+	[callback release];
+	[realm release];
+	//[signatureProvider performSelector:@selector(release)];
+	[nonce release];
+	[timestamp release];
+	
+	[super dealloc];
+}
+
 
 - (void)prepare {
     // sign

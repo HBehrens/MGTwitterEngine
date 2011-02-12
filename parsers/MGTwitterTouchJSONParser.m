@@ -135,6 +135,7 @@ connectionIdentifier:(NSString *)theIdentifier
 	[parsedObjects addObject:dictionary];
 	if (deliveryOptions & MGTwitterEngineDeliveryIndividualResultsOption)
 		if ([self _isValidDelegateForSelector:@selector(parsedObject:forRequest:ofResponseType:)])
+			// TODO: use generic perform selector to prevent warning
 			[delegate parsedObject:(NSDictionary *)dictionary forRequest:identifier ofResponseType:responseType];
 }
 

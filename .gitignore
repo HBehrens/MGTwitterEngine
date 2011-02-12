@@ -4,3 +4,5 @@ build
 yajl
 OAuthConsumer
 TouchJSON/.gitignore
+
+*.mode1v3
