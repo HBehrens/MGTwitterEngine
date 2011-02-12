@@ -42,9 +42,11 @@
     id<OASignatureProviding> signatureProvider;
     NSString *nonce;
     NSString *timestamp;
+    NSString *callback;
 }
 @property(readonly) NSString *signature;
 @property(readonly) NSString *nonce;
+@property(copy) NSString *callback;
 
 - (id)initWithURL:(NSURL *)aUrl
 		 consumer:(OAConsumer *)aConsumer
