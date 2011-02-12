@@ -1,3 +1,6 @@
+###SPECIAL NOTE ABOUT HBEHRENS/MGTWITTERENGINE
+This fork concentrates on MacOSX and uses a custom scheme "myscheme:" for the demo app to retrieve twitter's user credentials without the need for a password.
+
 ###SPECIAL NOTE ABOUT CTSHRYOCK/MGTWITTERENGINE
                                                                                                               
 This fork has splintered from the original in that I now manually including [OAuthConsumer](http://github.com/ctshryock/oauthconsumer) and [TouchJSON](http://github.com/schwa/TouchJSON).  The goal here is for new people to be able to clone the project, fill in a minimal amount of info in AppController.m, and get a running application.  [MattGemmell/MGTwitterEngine](https://github.com/mattgemmell/MGTwitterEngine) has a handful of parser options, which causes confusion because which parser to use was left to the developer.  As such, only libxml is available "out of the box", the other options require pulling in outside code.  Furthermore, the xCode project referenced these files, which didn't exist in a fresh clone.  Hence, a fresh clone wouldn't even compile.  This fork is trying to alleviate those pains   
